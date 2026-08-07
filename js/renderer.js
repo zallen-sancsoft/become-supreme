@@ -18,10 +18,6 @@ export function drawGame(ctx, canvas, state) {
     ctx.fillStyle = activeLevel.groundColor;
     ctx.fillRect(0, screenProps.halfH, canvas.width, screenProps.halfH);
 
-    // Horizon Line
-    ctx.strokeStyle = '#999';
-    ctx.beginPath(); ctx.moveTo(0, screenProps.halfH); ctx.lineTo(canvas.width, screenProps.halfH); ctx.stroke();
-
     // Draw Projected Cubes
     for (let cube of state.cubes) {
         let relativeX = cube.x - state.playerX;
