@@ -1,133 +1,291 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>#000000</title>
-    <link type="image/x-icon" rel="shortcut icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAHklEQVQ4T2NkYGD4z0ABYBw1gGE0DBhGw4BhWIQBAE5OEAELnjVHAAAAAElFTkSuQmCC">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
     <style>
-        :root {
-            --color: #000000;
-            --color-transparent: #00000022;
-        }
-
-        ::selection {
-            background: var(--color-transparent);
-        }
-
-        html,
         body {
-            background: var(--color);
-            height: 100%;
             margin: 0;
-        }
-
-        body {
+            background: #000;
+            overflow: hidden;
             display: flex;
-            align-items: center;
             justify-content: center;
-            cursor: pointer;
+            align-items: center;
+            height: 100vh;
         }
 
-        #color {
-            background: white;
-            color: var(--color);
-            font-size: 2.5rem;
-            font-weight: 300;
-            padding: 2.25rem 3rem;
-            font-family: -apple-system, BlinkMacSystemFont, avenir next, avenir, helvetica neue, helvetica, ubuntu, roboto, noto, segoe ui, arial, sans-serif;
-            cursor: text;
+        canvas {
+            background: #fff;
+            box-shadow: 0 0 20px rgba(255,255,255,0.2);
+            /* Crucial for mobile performance */
+            touch-action: none;
+            -webkit-touch-callout: none; /* Disables the long-press popup menu */
+            user-select: none; /* Prevents text highlighting while tapping */
         }
     </style>
 </head>
-
 <body>
-    <p id="color">#000000</p>
+    <canvas id="gameCanvas"></canvas>
     <script>
-        function randomInt(min, max) {
-            return Math.floor(Math.random() * (max - min + 1) + min);
-        }
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-        function hslToHex(h, s, l) {
-            h /= 360;
-            s /= 100;
-            l /= 100;
-            var r = void 0,
-                g = void 0,
-                b = void 0;
-            if (s === 0) {
-                r = g = b = l; // achromatic
+        function resizeGame() {
+            // 1. Choose your target aspect ratio (e.g., 9:16 for portrait mobile)
+            const targetRatio = 9 / 16;
+
+            // 2. Measure the available window space
+            let windowW = window.innerWidth;
+            let windowH = window.innerHeight;
+
+            // 3. Calculate best fit matching the ratio
+            if (windowW / windowH > targetRatio) {
+                canvas.height = windowH;
+                canvas.width = windowH * targetRatio;
             } else {
-                var hue2rgb = function hue2rgb(p, q, t) {
-                    if (t < 0) t += 1;
-                    if (t > 1) t -= 1;
-                    if (t < 1 / 6) return p + (q - p) * 6 * t;
-                    if (t < 1 / 2) return q;
-                    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-                    return p;
-                };
-                var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-                var p = 2 * l - q;
-                r = hue2rgb(p, q, h + 1 / 3);
-                g = hue2rgb(p, q, h);
-                b = hue2rgb(p, q, h - 1 / 3);
+                canvas.width = windowW;
+                canvas.height = windowW / targetRatio;
             }
-            var toHex = function toHex(x) {
-                var hex = Math.round(x * 255).toString(16);
-                return hex.length === 1 ? '0' + hex : hex;
-            };
-            return '#' + toHex(r) + toHex(g) + toHex(b);
+
+            // 4. Update your game engine center-points dynamically
+            HALF_W = canvas.width / 2;
+            HALF_H = canvas.height / 2;
+            PROJECTION_DIST = canvas.width * 0.8; // Scales focal length to match screen width
         }
 
-        window.onload = function () {
-            let stopProp = function (ev) {
-                ev.stopPropagation();
-            }
+        // Initialize variables dynamically instead of with 'const'
+        let HALF_W, HALF_H, PROJECTION_DIST;
 
-            var colorElement = document.getElementById("color");
-            colorElement.addEventListener("click", stopProp, false);
-            colorElement.addEventListener("mousedown", stopProp, false);
+        // Run on startup and whenever the device rotates
+        window.addEventListener('resize', resizeGame);
+        resizeGame();
 
-            var setFavicon = function (hex) {
-                var canvas = document.createElement('canvas');
-                canvas.width = 16;
-                canvas.height = 16;
-                var ctx = canvas.getContext('2d');
-                ctx.fillStyle = hex;
-                ctx.fillRect(0, 0, 16, 16);
-                document.getElementsByTagName('link')[0].href = canvas.toDataURL("image/x-icon");
-            }
+        // Player state
+        let playerX = 0;
+        let playerSpeed = 8;
+        let keys = {};
 
-            var setRandomColor = function setRandomColor() {
-                var h = void 0,
-                    s = void 0,
-                    l = void 0;
+        // Add this to your player state variables
+        let playerRadius = 100; // Size of the player circle in pixels
 
-                h = randomInt(0, 359);
-                s = randomInt(55, 75);
-                l = randomInt(40, 60);
+        let isGameOver = false;
+        let score = 0;
 
-                document.documentElement.style.setProperty('--color', 'hsl(' + h + ', ' + s + '%, ' + l + '%)');
-                var hex = hslToHex(h, s, l);
-                document.title = hex;
-                colorElement.innerHTML = hex;
-                document.documentElement.style.setProperty('--color-transparent', hex + '22');
+        // Cubes state
+        let cubes = [];
 
-                setFavicon(hex);
-            };
-            setRandomColor();
+        const NUM_CUBES = 2000;
+        const MAP_WIDTH = 40000; // Horizontal span of the field
+        const MAX_DEPTH = 3000;
+        const START_SAFE_ZONE = 1000;
 
-            var body = document.getElementsByTagName("body")[0];
-            body.addEventListener("mousedown", function (ev) {
-                ev.preventDefault();
+        // Initialize random cubes
+        for (let i = 0; i < NUM_CUBES; i++) {
+            cubes.push({
+                x: (Math.random() - 0.5) * MAP_WIDTH,
+                y: 100,
+                // Old way: z: Math.random() * MAX_DEPTH
+                // New way: Generates depth between 400 and 1200
+                z: START_SAFE_ZONE + (Math.random() * (MAX_DEPTH - START_SAFE_ZONE)),
+                size: 40,
+                color: `hsl(${Math.random() * 40 + 20}, 100%, 50%)`
             });
-            body.addEventListener("click", function () {
-                setRandomColor();
-            }, false);
+        }
+
+        // Input listeners
+        // Modify your existing keys object to handle inputs uniformly
+        let controls = {
+            left: false,
+            right: false
         };
+
+        // --- Desktop Keyboard Controls ---
+        window.addEventListener('keydown', e => {
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') controls.left = true;
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') controls.right = true;
+        });
+
+        window.addEventListener('keyup', e => {
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') controls.left = false;
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') controls.right = false;
+        });
+
+        // --- Mobile Touch Controls ---
+        function handleTouch(e) {
+            // Prevent default browser behaviors like zooming or scrolling
+            e.preventDefault();
+
+            // Reset control states before checking active touches
+            controls.left = false;
+            controls.right = false;
+
+            // Loop through all active fingers on the screen
+            for (let i = 0; i < e.touches.length; i++) {
+                let touchX = e.touches[i].clientX;
+                let screenWidth = window.innerWidth;
+
+                // If touch is on the left half of the window
+                if (touchX < screenWidth / 2) {
+                    controls.left = true;
+                }
+                // If touch is on the right half of the window
+                else {
+                    controls.right = true;
+                }
+            }
+        }
+
+        // Attach touch events directly to the window or canvas
+        window.addEventListener('touchstart', handleTouch, { passive: false });
+        window.addEventListener('touchmove', handleTouch, { passive: false });
+        window.addEventListener('touchend', handleTouch, { passive: false });
+        window.addEventListener('keydown', e => { if (e.code === 'Space') resetGame(); });
+        window.addEventListener('touchstart', resetGame);
+
+
+        function update() {
+            // Stop updating if the game is over
+            if (isGameOver) return;
+
+            // Player steering
+            if (controls.left) playerX -= playerSpeed;
+            if (controls.right) playerX += playerSpeed;
+
+            // Increment score over time
+            score += 1;
+
+            // Update cube positions and check for collisions
+            for (let cube of cubes) {
+                cube.z -= 6; // Move towards camera
+
+                // --- COLLISION DETECTION MATH ---
+                // 1. Check if the cube has reached the player's Z-depth plane (Z close to 0)
+                // We use a small threshold buffer (e.g., between Z=0 and Z=30)
+                if (cube.z > 0 && cube.z < 10) {
+
+                    // 2. Calculate the center distance between the player and the cube on the X-axis
+                    let distanceX = Math.abs(cube.x - playerX);
+
+                    // 3. Define the collision boundary width
+                    // This combines the cube's physical width and the player's safety margin
+                    let collisionBuffer = cube.size / 2 + 15;
+
+                    // 4. Trigger game over if the player is inside the horizontal boundaries
+                    if (distanceX < collisionBuffer) {
+                        isGameOver = true;
+                    }
+                }
+
+                // Respawn if passed camera
+                if (cube.z <= 0) {
+                    cube.z = MAX_DEPTH;
+                    cube.x = playerX + (Math.random() - 0.5) * MAP_WIDTH;
+                }
+            }
+
+            // Sort back-to-front
+            cubes.sort((a, b) => b.z - a.z);
+        }
+
+
+        function draw() {
+            // Clear screen & Draw Sky
+            ctx.fillStyle = '#e0f6ff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Ground
+            ctx.fillStyle = '#cccccc';
+            ctx.fillRect(0, HALF_H, canvas.width, HALF_H);
+
+            // Draw Horizon Line
+            ctx.strokeStyle = '#999';
+            ctx.beginPath(); ctx.moveTo(0, HALF_H); ctx.lineTo(canvas.width, HALF_H); ctx.stroke();
+
+            // Render Cubes
+            for (let cube of cubes) {
+                // Translate world X relative to player camera
+                let relativeX = cube.x - playerX;
+
+                // Perspective scale factor
+                let scale = PROJECTION_DIST / cube.z;
+
+                // Project to 2D screen positions
+                let screenX = HALF_W + (relativeX * scale);
+                let screenY = HALF_H + (cube.y * scale);
+                let screenSize = cube.size * scale;
+
+                // Only draw if it's on screen
+                if (screenX + screenSize > 0 && screenX - screenSize < canvas.width) {
+                    ctx.fillStyle = cube.color;
+                    // Draw pseudo-3D front face
+                    ctx.fillRect(screenX - screenSize / 2, screenY - screenSize, screenSize, screenSize);
+
+                    // Draw simple black outline for depth clarity
+                    ctx.strokeStyle = '#000';
+                    ctx.strokeRect(screenX - screenSize / 2, screenY - screenSize, screenSize, screenSize);
+                }
+            }
+
+            // --- DRAW PLAYER CIRCLE ---
+            // Position it at the horizontal center, slightly up from the bottom edge
+            let px = canvas.width / 2;
+            let py = canvas.height - 120;
+
+            ctx.beginPath();
+            // Creates a perfect circle path: arc(x, y, radius, startAngle, endAngle)
+            ctx.arc(px, py, playerRadius, 0, 2 * Math.PI);
+
+            // Style the player circle (e.g., sleek charcoal gray or bright electric blue)
+            ctx.fillStyle = '#333333';
+            ctx.fill();
+
+            // Add a clean outline so it stands out against gray ground or dark cubes
+            ctx.strokeStyle = '#ffffff';
+            //ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.closePath();
+
+            if (isGameOver) {
+                // Semi-transparent dark background overlay
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Game Over Text
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 40px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 20);
+
+                // Restart Instructions Text
+                ctx.font = '20px sans-serif';
+                ctx.fillStyle = '#aaaaaa';
+                ctx.fillText('Tap Screen or Press Space to Restart', canvas.width / 2, canvas.height / 2 + 30);
+            }
+        }
+
+        function resetGame() {
+            if (!isGameOver) return;
+
+            playerX = 0;
+            score = 0;
+            isGameOver = false;
+
+            // Apply the safe zone padding on reset
+            for (let cube of cubes) {
+                cube.z = START_SAFE_ZONE + (Math.random() * (MAX_DEPTH - START_SAFE_ZONE));
+                cube.x = (Math.random() - 0.5) * MAP_WIDTH;
+            }
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        
+
+        loop();
     </script>
 </body>
-
 </html>
