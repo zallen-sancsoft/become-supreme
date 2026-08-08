@@ -710,7 +710,8 @@ export function drawGame(ctx, canvas, state) {
         ctx.fillStyle = '#ffcc00'; // Warm pizza cheese gold
         ctx.font = 'bold 36px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('BECOME SUPREME', canvas.width / 2, canvas.height / 2 - 120);
+        ctx.fillText('BECOME', canvas.width / 2, canvas.height / 2 - 120);
+        ctx.fillText('SUPREME', canvas.width / 2, canvas.height / 2 - 80);
 
         // Subtitle Instructions
         ctx.fillStyle = '#ffffff';
