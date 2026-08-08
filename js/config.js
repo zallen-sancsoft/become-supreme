@@ -1,7 +1,7 @@
 // Global Constants
-export const NUM_CUBES = 20;
-export const MAP_WIDTH = 4000;
-export const MAX_DEPTH = 1200;
+export const NUM_CUBES = 50;
+export const MAP_WIDTH = 2000;
+export const MAX_DEPTH = 2500;
 export const START_SAFE_ZONE = 1000;
 export const canvas = document.getElementById('gameCanvas');
 export const ctx = canvas.getContext('2d');
@@ -31,7 +31,9 @@ export const LEVELS = [
         skyColor: '#A2D2FF',
         groundColor: '#90A955',
         avoidShape: 'diamond' // Level 3 spawns floating crystals/diamonds
-    }
+    },
+    { scoreRequired: 9999, cubeSpeed: 14, spawnSpread: 4000, skyColor: '#faf0e6', groundColor: '#d2b48c' },
+    { scoreRequired: 9999, cubeSpeed: 16, spawnSpread: 4000, skyColor: '#f5e6d3', groundColor: '#cd853f' }
 ];
 
 export const PIZZA_THEME = {
@@ -51,13 +53,23 @@ export let screenProps = {
 // Modifiable Live Game State
 // --- UPDATE THE state OBJECT INSIDE config.js ---
 export const state = {
+    isMenuOpen: true,
+
+    isVictory: false,      // Triggers the celebratory screen overlay
+    ngPlusCount: 0,
+
+    shakeTimer: 0,
+
+    // NEW FOR SOUND REGULATION:
+    proxSoundCooldown: 0, // Frame delay gap tracker for radar beeps
+
     playerX: 0,
     playerSpeed: 8,
     playerRadius: 15,
     playerTilt: 0,
     isGameOver: false,
     score: 0,
-    currentLevelIndex: 0,
+    currentLevelIndex: 0, // change to test different levels
     levelUpTimer: 0,
     cubes: [],
 
@@ -65,7 +77,11 @@ export const state = {
     tomatoes: [],       // Array holding live tomato objects
     sauceProgress: 0,    // Value from 0.0 to 1.0 (replaces the old time-based sauce)
     cheeseSlices: [],    // Array holding active cheese slices
-    cheeseProgress: 0
+    cheeseProgress: 0,
+    veggies: [],          // Array holding active green peppers and onions
+    toppingProgress: 0,
+    meats: [],            // Array holding active pepperoni and sausage slices
+    meatProgress: 0   
 };
 
 

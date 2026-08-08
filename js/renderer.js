@@ -12,11 +12,25 @@ export function drawGame(ctx, canvas, state) {
     let activeLevel = LEVELS[state.currentLevelIndex];
     const insets = getSafeInsets();
 
-    // Render Sky and Ground
+    // 1. SAVE CANVAS STATE BEFORE APPLYING SHAKE
+    ctx.save();
+
+    if (state.shakeTimer > 0) {
+        let intensity = (state.shakeTimer / 30) * 15;
+        let shakeX = (Math.random() - 0.5) * intensity;
+        let shakeY = (Math.random() - 0.5) * intensity;
+        ctx.translate(shakeX, shakeY);
+    }
+
+    // 2. RENDER SHAKING CHANNELS (Sky, Ground, Horizon Line)
     ctx.fillStyle = activeLevel.skyColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+
     ctx.fillStyle = activeLevel.groundColor;
     ctx.fillRect(0, screenProps.halfH, canvas.width, screenProps.halfH);
+
+    ctx.strokeStyle = '#999';
+    ctx.beginPath(); ctx.moveTo(0, screenProps.halfH); ctx.lineTo(canvas.width, screenProps.halfH); ctx.stroke();
 
     // Draw Projected Cubes
     for (let cube of state.cubes) {
@@ -211,14 +225,107 @@ export function drawGame(ctx, canvas, state) {
 
                 ctx.restore();
             }
-            else {
-                // Default Fallback: Classic Square
-                ctx.fillStyle = cube.color;
+            else if (state.currentLevelIndex === 3) {
+                // --- LEVEL 4 (TOPPING): CAST-IRON SKILLET ---
+                ctx.save();
+
+                let panRadius = screenSize * 0.5;
+                let handleW = screenSize * 0.7;
+                let handleH = screenSize * 0.12;
+
+                // Draw the long skillet handle shooting out to the side
+                ctx.fillStyle = '#1c1c1c'; // Dark charcoal cast iron
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = Math.max(1, scale * 1.2);
+                ctx.fillRect(screenX + panRadius * 0.5, screenY - panRadius - handleH / 2, handleW, handleH);
+                ctx.strokeRect(screenX + panRadius * 0.5, screenY - panRadius - handleH / 2, handleW, handleH);
+
+                // Draw the deep main circular pan
+                ctx.fillStyle = '#2b2b2b';
                 ctx.beginPath();
-                ctx.rect(screenX - screenSize / 2, screenY - screenSize, screenSize, screenSize);
-                ctx.closePath();
+                ctx.arc(screenX, screenY - panRadius, panRadius, 0, 2 * Math.PI);
                 ctx.fill();
                 ctx.stroke();
+                ctx.closePath();
+
+                // Draw an inner lighter ring to mimic the rim of a frying pan
+                ctx.strokeStyle = '#444444';
+                ctx.beginPath();
+                ctx.arc(screenX, screenY - panRadius, panRadius * 0.8, 0, 2 * Math.PI);
+                ctx.stroke();
+                ctx.closePath();
+
+                ctx.restore();
+            }
+            else if (state.currentLevelIndex === 4) {
+                // --- LEVEL 5 (MEATING): SPINNING 3D PIZZA CUTTER ---
+                ctx.save();
+
+                // Core sizing parameters mapped to our 3D perspective projection
+                let bladeRadius = screenSize * 0.45; // Size of the circular cutting wheel
+                let handleH = screenSize * 0.8;      // Height of the structural handle
+                let handleW = screenSize * 0.14;     // Width of the handle stem
+
+                // 1. DRAW THE HANDLE AND EXTENSION SHAFT (Standing up from the track)
+                ctx.fillStyle = '#cc1111'; // Classic commercial red handle
+                ctx.strokeStyle = '#660000';
+                ctx.lineWidth = Math.max(1, scale * 1.2);
+
+                ctx.beginPath();
+                // Draws the main thick handle grip at the base
+                ctx.rect(screenX - handleW / 2, screenY - handleH * 0.6, handleW, handleH * 0.6);
+                ctx.fill();
+                ctx.stroke();
+                ctx.closePath();
+
+                // Metallic connecting fork shaft
+                ctx.fillStyle = '#aaaaaa';
+                ctx.strokeStyle = '#444444';
+                ctx.fillRect(screenX - handleW * 0.3, screenY - handleH, handleW * 0.6, handleH * 0.4);
+                ctx.strokeRect(screenX - handleW * 0.3, screenY - handleH, handleW * 0.6, handleH * 0.4);
+
+                // 2. TRANSLATE TO CUTTING WHEEL HUB FOR DYNAMIC SPINNING
+                // We shift our coordinate context right to the center axis point of the silver blade
+                ctx.translate(screenX, screenY - handleH);
+
+                // DYNAMIC ANIMATION CALCULATION:
+                // Uses the player's cumulative score as a continuous timeline seed to turn the wheel
+                let spinAngle = (state.score * 0.12) % (Math.PI * 2);
+                ctx.rotate(spinAngle);
+
+                // 3. DRAW THE MAIN CIRCULAR CUTTING BLADE
+                ctx.fillStyle = '#e6e6e6'; // Bright reflective steel color
+                ctx.strokeStyle = '#737373';
+
+                ctx.beginPath();
+                ctx.arc(0, 0, bladeRadius, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.stroke();
+                ctx.closePath();
+
+                // 4. ADD VISUAL BLADE SPINDLES / SHARP BLADE SLATS
+                // Drawing explicit cross-lines inside the circle makes the spinning motion visible to the player!
+                ctx.strokeStyle = '#999999';
+                ctx.lineWidth = Math.max(1, scale * 1.0);
+
+                ctx.beginPath();
+                // 3 crossing intersection lines to create a 6-spoke steel layout
+                for (let i = 0; i < 3; i++) {
+                    let angle = (i * Math.PI) / 3;
+                    ctx.moveTo(Math.cos(angle) * bladeRadius, Math.sin(angle) * bladeRadius);
+                    ctx.lineTo(-Math.cos(angle) * bladeRadius, -Math.sin(angle) * bladeRadius);
+                }
+                ctx.stroke();
+                ctx.closePath();
+
+                // Center dark metal rivet pin cap
+                ctx.fillStyle = '#333333';
+                ctx.beginPath();
+                ctx.arc(0, 0, bladeRadius * 0.15, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.closePath();
+
+                ctx.restore();
             }
 
             ctx.restore();
@@ -306,6 +413,104 @@ export function drawGame(ctx, canvas, state) {
         }
     }
 
+    for (let veg of state.veggies) {
+        let relativeX = veg.x - state.playerX;
+        let scale = screenProps.projectionDist / veg.z;
+
+        let screenX = screenProps.halfW + (relativeX * scale);
+        let screenY = screenProps.halfH + (veg.y * scale);
+        let screenSize = veg.size * scale;
+
+        if (screenX + screenSize > 0 && screenX - screenSize < canvas.width) {
+            ctx.save();
+            ctx.lineWidth = Math.max(1, scale * 1.2);
+
+            if (veg.type === 'pepper') {
+                // Draw a shiny green bell pepper slice (hollow ring)
+                ctx.strokeStyle = '#1e5614';
+                ctx.fillStyle = '#44ad29';
+                ctx.beginPath();
+                ctx.arc(screenX, screenY - screenSize / 2, screenSize / 2, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.stroke();
+
+                // Cutout inner core center hole
+                ctx.fillStyle = activeLevel.groundColor; // Matches the floor color
+                ctx.beginPath();
+                ctx.arc(screenX, screenY - screenSize / 2, screenSize / 3, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.stroke();
+            }
+            else {
+                // Draw a purple onion crescent wedge
+                ctx.strokeStyle = '#4a154b';
+                ctx.fillStyle = '#ba55d3'; // Orchid purple
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, screenSize * 0.6, Math.PI, 2 * Math.PI); // Arching semicircle
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Add interior white onion layering rings
+                ctx.strokeStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, screenSize * 0.4, Math.PI, 2 * Math.PI);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+    }
+
+    for (let meat of state.meats) {
+        let relativeX = meat.x - state.playerX;
+        let scale = screenProps.projectionDist / meat.z;
+
+        let screenX = screenProps.halfW + (relativeX * scale);
+        let screenY = screenProps.halfH + (meat.y * scale);
+        let screenSize = meat.size * scale;
+
+        if (screenX + screenSize > 0 && screenX - screenSize < canvas.width) {
+            ctx.save();
+            ctx.lineWidth = Math.max(1, scale * 1.2);
+
+            if (meat.type === 'pep') {
+                // Draw a deep red Pepperoni slice circle
+                ctx.fillStyle = '#b71c1c';
+                ctx.strokeStyle = '#5f0909';
+                ctx.beginPath();
+                ctx.arc(screenX, screenY - screenSize / 2, screenSize / 2, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.stroke();
+                ctx.closePath();
+
+                // Add tiny stylized fat-marbling speckles inside the pepperoni
+                ctx.fillStyle = '#ffcdd2';
+                ctx.beginPath();
+                ctx.arc(screenX - screenSize / 4, screenY - screenSize / 2, 1.5 * scale, 0, 2 * Math.PI);
+                ctx.arc(screenX + screenSize / 5, screenY - screenSize / 3, 1 * scale, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+            else {
+                // Draw a lumpy, rustic brown Italian Sausage chunk
+                ctx.fillStyle = '#5c3a21'; // Cooked meat brown
+                ctx.strokeStyle = '#2e1a0b';
+                ctx.beginPath();
+                // Create an irregular jagged meat lump path
+                ctx.moveTo(screenX - screenSize / 2, screenY);
+                ctx.lineTo(screenX - screenSize / 3, screenY - screenSize * 0.8);
+                ctx.lineTo(screenX + screenSize / 4, screenY - screenSize * 0.9);
+                ctx.lineTo(screenX + screenSize / 2, screenY - screenSize * 0.4);
+                ctx.lineTo(screenX + screenSize / 3, screenY);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+    }
+
     // Draw Ship Avatar
     // --- REPLACE THE PLAYER AVATAR BLOCK IN renderer.js WITH THIS ---
 
@@ -315,6 +520,8 @@ export function drawGame(ctx, canvas, state) {
     ctx.save();
     ctx.translate(px, py);
     ctx.rotate(state.playerTilt);
+
+
 
     // --- PROGRESSION PERCENTAGE CALCULATIONS ---
     let currentLevel = state.currentLevelIndex;
@@ -392,6 +599,18 @@ export function drawGame(ctx, canvas, state) {
         ctx.fill();
     }*/
 
+    if (state.currentLevelIndex === 3 && state.toppingProgress > 0) {
+        // Draw 3 tiny green dashes on the pizza indicating seasoning/peppers!
+        ctx.strokeStyle = '#44ad29';
+        ctx.lineWidth = 3;
+
+        ctx.beginPath();
+        ctx.moveTo(-6, 2); ctx.lineTo(-2, 4);
+        ctx.moveTo(4, 3); ctx.lineTo(8, 1);
+        ctx.stroke();
+    }
+
+    ctx.restore();
     ctx.restore();
 
 
@@ -413,17 +632,17 @@ export function drawGame(ctx, canvas, state) {
     let progressPct = 0;
 
     if (state.currentLevelIndex === 0) {
-        // Level 1: Tracks score progression up to the Level 2 milestone (500 points)
         let target = LEVELS[1].scoreRequired;
         progressPct = Math.min(state.score / target, 1.0);
-    }
-    else if (state.currentLevelIndex === 1) {
-        // Level 2: Tracks your interactive tomato collection progress directly
+    } else if (state.currentLevelIndex === 1) {
         progressPct = state.sauceProgress;
-    }
-    else {
-        // Level 3+: Measures survival since entering the level (e.g., first 1000 frames)
+    } else if (state.currentLevelIndex === 2) {
         progressPct = state.cheeseProgress;
+    } else if (state.currentLevelIndex === 3) {
+        progressPct = state.toppingProgress;
+    } else {
+        // Level 5 (Meating Stage): Links bar to meat collections!
+        progressPct = state.meatProgress;
     }
 
     // 2. Define sizing parameters for our UI Bar
@@ -433,10 +652,9 @@ export function drawGame(ctx, canvas, state) {
     let barY = 55 + insets.top;
 
     // 3. Draw Level Title Text Above the Bar
-    const LEVEL_NAMES = ["Baking", "Saucing", "Cheesing"];
+    const LEVEL_NAMES = ["Baking", "Saucing", "Cheesing", "Vegging", "Meating"];  // Added Topping
+    let currentStepName = LEVEL_NAMES[state.currentLevelIndex] || "Meating";
 
-    // Grab the name matching the current index (fallback to "Cheesing" if higher)
-    let currentStepName = LEVEL_NAMES[state.currentLevelIndex] || "Cheesing";
 
     // 2. Define sizing parameters for our UI Bar (kept exactly the same)
     //let barW = 180;
@@ -462,6 +680,8 @@ export function drawGame(ctx, canvas, state) {
     let barColor = '#f4d068'; // Level 1: Golden dough theme color
     if (state.currentLevelIndex === 1) barColor = '#ff3333'; // Level 2: Tomato Sauce theme red
     if (state.currentLevelIndex === 2) barColor = '#ffdf7a'; // Level 3: Mozzarella Cheese theme yellow
+    if (state.currentLevelIndex === 3) barColor = '#228b22'; // Level 4: Forest Green for Veggies
+    if (state.currentLevelIndex === 4) barColor = '#a52a2a'; // Level 5: Rich Brown for Meats
 
     ctx.fillStyle = barColor;
     ctx.fillRect(barX, barY, barW * progressPct, barH);
@@ -480,4 +700,94 @@ export function drawGame(ctx, canvas, state) {
         ctx.font = '20px sans-serif'; ctx.fillStyle = '#aaaaaa';
         ctx.fillText('Tap Screen or Space to Restart', canvas.width / 2, canvas.height / 2 + 30);
     }
+
+    if (state.isMenuOpen) {
+        // Semi-transparent clean dark backdrop overlay
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.82)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 1. Draw Stylized Title Headline
+        ctx.fillStyle = '#ffcc00'; // Warm pizza cheese gold
+        ctx.font = 'bold 44px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('PIZZA RUNNER 3D', canvas.width / 2, canvas.height / 2 - 80);
+
+        // Subtitle Instructions
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '16px sans-serif';
+        ctx.fillText('Assemble the ultimate pizza across 5 culinary stages!', canvas.width / 2, canvas.height / 2 - 35);
+        ctx.fillText('Steer Left/Right to dodge obstacles and gather ingredients.', canvas.width / 2, canvas.height / 2 - 10);
+
+        // 2. Draw Interactive Start Button Box
+        let btnW = 220;
+        let btnH = 50;
+        let btnX = canvas.width / 2 - btnW / 2;
+        let btnY = canvas.height / 2 + 40;
+
+        ctx.fillStyle = '#ff3333'; // Vibrant marinara red button color
+        ctx.beginPath();
+        // Custom smooth rounded corners for an arcade button look
+        ctx.roundRect(btnX, btnY, btnW, btnH, 8);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        ctx.closePath();
+
+        // 3. Draw Button Call-To-Action Text
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillText('START COOKING', canvas.width / 2, btnY + 31);
+    }
+
+    if (state.isVictory) {
+        // Semi-transparent deep emerald/gold victory overlay backing panel
+        ctx.fillStyle = 'rgba(15, 32, 15, 0.88)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 1. Victory Message Texts
+        ctx.fillStyle = '#ffcc00'; // Crown Gold
+        ctx.font = 'bold 46px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('CHEF VICTORY!', canvas.width / 2, canvas.height / 2 - 90);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.fillText('The Ultimate Pizza is Fully Assembled!', canvas.width / 2, canvas.height / 2 - 40);
+
+        ctx.fillStyle = '#b3ffb3';
+        ctx.font = '16px sans-serif';
+        ctx.fillText('Total Survival Score: ' + state.score, canvas.width / 2, canvas.height / 2 - 10);
+
+        // Display current loop index context
+        let loopLabel = state.ngPlusCount === 0 ? "First Complete Run" : "Completed NG+" + state.ngPlusCount;
+        ctx.fillText('Current Status: ' + loopLabel, canvas.width / 2, canvas.height / 2 + 15);
+
+        // 2. Render Interactive "START NEW GAME+" Button Boundary Box
+        let vBtnW = 260;
+        let vBtnH = 52;
+        let vBtnX = canvas.width / 2 - vBtnW / 2;
+        let vBtnY = canvas.height / 2 + 65;
+
+        ctx.fillStyle = '#ff9900'; // Bright blazing orange button
+        ctx.beginPath();
+        ctx.roundRect(vBtnX, vBtnY, vBtnW, vBtnH, 8);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        ctx.closePath();
+
+        // Button text prompt
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 16px sans-serif';
+        // Dynamic naming updates: "START NG+1", "START NG+2"...
+        ctx.fillText('ENTER NEW GAME+ ' + (state.ngPlusCount + 1), canvas.width / 2, vBtnY + 32);
+
+        ctx.fillStyle = '#aaaaaa';
+        ctx.font = 'italic 13px sans-serif';
+        ctx.fillText('(WARNING: Speed increases, fields tighten!)', canvas.width / 2, vBtnY + 80);
+    }
 }
+
+

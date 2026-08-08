@@ -1,5 +1,6 @@
 import { NUM_CUBES, MAP_WIDTH, MAX_DEPTH, START_SAFE_ZONE, LEVELS, TILT_CONFIG } from './config.js';
 import { controls } from './input.js';
+import { playLevelBgm, stopBgm, playCollectSound, playHitSound, playProximityTick } from './audio.js';
 
 // Moves the array setup logic into the physics module
 export function initCubes(state) {
@@ -8,17 +9,25 @@ export function initCubes(state) {
         state.cubes.push({
             x: (Math.random() - 0.5) * MAP_WIDTH,
             y: 100,
+            // Ensures starting blocks are perfectly scattered into the depth field
             z: START_SAFE_ZONE + (Math.random() * (MAX_DEPTH - START_SAFE_ZONE)),
             size: 40,
-            color: `#8A9A5B`
-
+            color: `hsl(${Math.random() * 40 + 20}, 100%, 50%)`
         });
     }
 }
 
 // Houses the isolated mathematical physics tick
 export function updateGame(state) {
+    if (state.isMenuOpen) return;
+
+    if (state.shakeTimer > 0) {
+        state.shakeTimer--;
+    }
+
     if (state.isGameOver) return;
+    // NEW: Freeze the engine logic frame when victory window is active
+    if (state.isVictory) return;
 
     // 1. Steering & Easing calculations
     if (controls.left) {
@@ -35,21 +44,44 @@ export function updateGame(state) {
     // Increments scoring metrics
     state.score += 1;
 
+    // Cooldown ticker for close alerts
+    if (state.proxSoundCooldown > 0) state.proxSoundCooldown--;
+
     // 2. Level Progression Evaluations
     let activeLevel = LEVELS[state.currentLevelIndex];
+
+    // NEW DYNAMIC DIFFICULTY: Every NG+ loop scales speed up by 15% and narrows the spawn spread by 10%
+    let dynamicSpeed = activeLevel.cubeSpeed * (1 + state.ngPlusCount * 0.15);
+    let dynamicSpread = activeLevel.spawnSpread * (1 - Math.min(state.ngPlusCount * 0.10, 0.5));
+
     if (state.currentLevelIndex < LEVELS.length - 1) {
         let nextLevel = LEVELS[state.currentLevelIndex + 1];
 
-        // --- UPDATED LEVEL PROGRESSION LOGIC ---
         if (state.currentLevelIndex === 1) {
-            // LEVEL 2 TO 3 CONDITION: Progress ONLY if the pizza is 100% covered in sauce
+            // Saucing -> Cheesing condition
             if (state.sauceProgress >= 1.0) {
                 state.currentLevelIndex++;
                 activeLevel = LEVELS[state.currentLevelIndex];
                 state.levelUpTimer = 60;
             }
-        } else {
-            // DEFAULT CONDITION (Level 1 to 2): Progress based on standard score threshold
+        }
+        else if (state.currentLevelIndex === 2) {
+            // NEW GATING: Cheesing -> Topping condition
+            if (state.cheeseProgress >= 1.0) {
+                state.currentLevelIndex++;
+                activeLevel = LEVELS[state.currentLevelIndex];
+                state.levelUpTimer = 60;
+            }
+        }
+        else if (state.currentLevelIndex === 3) {
+            // NEW GATING: Topping -> Meat condition
+            if (state.toppingProgress >= 1.0) {
+                state.currentLevelIndex++;
+                activeLevel = LEVELS[state.currentLevelIndex];
+                state.levelUpTimer = 60;
+            }
+        }
+        else {
             if (state.score >= nextLevel.scoreRequired) {
                 state.currentLevelIndex++;
                 activeLevel = LEVELS[state.currentLevelIndex];
@@ -57,22 +89,28 @@ export function updateGame(state) {
             }
         }
     } else {
-        // Keep locked on the final level once reached
+        if (state.meatProgress >= 1.0) {
+            state.isVictory = true;
+            return;
+        }
         activeLevel = LEVELS[LEVELS.length - 1];
     }
     if (state.levelUpTimer > 0) state.levelUpTimer--;
 
     updateCollectibles(state);
     updateCheeseCollectibles(state);
+    updateVeggieCollectibles(state);
+    updateMeatCollectibles(state);
 
     // 3. Object movement and spatial boundaries check
     for (let cube of state.cubes) {
-        cube.z -= activeLevel.cubeSpeed;
+        cube.z -= dynamicSpeed;
 
         // --- ACCURATE 2D PLAYER PLANE COLLISION ---
-        // The player sits at Z ≈ 140 on screen. We check a predictive window matching the frame speed.
+        // The player sits at playerZPlane on screen. We check a predictive window matching the frame speed.
         let playerZPlane = 85;
-        if (cube.z >= playerZPlane - activeLevel.cubeSpeed && cube.z <= playerZPlane + 20) {
+
+        if (cube.z >= playerZPlane - dynamicSpeed && cube.z <= playerZPlane + 20) {
 
             // Calculate the horizontal distance
             let distanceX = Math.abs(cube.x - state.playerX);
@@ -88,29 +126,40 @@ export function updateGame(state) {
             // Trigger instant crash
             if (distanceX < collisionBuffer) {
                 state.isGameOver = true;
+                // --- TRIGGER CAMERA SHAKE FOR 30 FRAMES ---
+                state.shakeTimer = 30;
+                stopBgm();                     // Freeze background score track
+                playHitSound(state.currentLevelIndex); 
+            }
+        }
+
+        // FEATURE B: CLOSE PROXIMITY TICK CHIPS RADAR
+        // Trigger a beep if an obstacle is getting close (Z is right in front of you) AND horizontally aligned with you
+        if (cube.z > playerZPlane && cube.z < playerZPlane + 180) {
+            let distanceX = Math.abs(cube.x - state.playerX);
+            // If the obstacle is directly heading into your collision path
+            if (distanceX < cube.size + 40) {
+                if (state.proxSoundCooldown === 0) {
+                    playProximityTick();
+                    state.proxSoundCooldown = 15; // Beep every 15 frames while near danger
+                }
             }
         }
 
         // Recycle objects when they fly completely past the screen view (Z <= 20)
         if (cube.z <= 20) {
-            cube.z = MAX_DEPTH;
-            cube.x = state.playerX + (Math.random() - 0.5) * activeLevel.spawnSpread;
+            // OLD WAY: cube.z = MAX_DEPTH; (This caused the "line" bug!)
+
+            // NEW WAY: Randomly distribute their depth between 400 and your new MAX_DEPTH
+            cube.z = START_SAFE_ZONE + (Math.random() * (MAX_DEPTH - START_SAFE_ZONE));
+
+            // Keep the horizontal spread randomized relative to player steering
+            cube.x = state.playerX + (Math.random() - 0.5) * dynamicSpread;
         }
     }
 
     // Depth sorting
     state.cubes.sort((a, b) => b.z - a.z);
-}
-
-// Generates a tomato slice far out in the distance
-export function spawnTomato(state) {
-    state.tomatoes.push({
-        x: (Math.random() - 0.5) * 1500, // Spawn spread matching level 2
-        y: 100,
-        z: 1200, // Spawn at MAX_DEPTH
-        size: 30, // Tomatos are slightly smaller than cubes
-        collected: false
-    });
 }
 
 export function updateCollectibles(state) {
@@ -120,7 +169,9 @@ export function updateCollectibles(state) {
     if (state.currentLevelIndex === 1) {
         if (state.tomatoes.length < 3 && Math.random() < 0.01) {
             state.tomatoes.push({
-                x: (Math.random() - 0.5) * 1500,
+                // OLD WAY: x: (Math.random() - 0.5) * 1500,
+                // NEW WAY: Center the random spread directly on top of the player's camera position!
+                x: state.playerX + (Math.random() - 0.5) * 800,
                 y: 100,
                 z: 1200,
                 size: 40
@@ -144,6 +195,7 @@ export function updateCollectibles(state) {
             if (distanceX < collectionBuffer) {
                 // INSTANT ARCADE DELETION
                 state.sauceProgress = Math.min(state.sauceProgress + 0.15, 1.0);
+                playCollectSound('tomato');
                 state.tomatoes.splice(i, 1);
                 continue;
             }
@@ -164,9 +216,10 @@ export function updateCheeseCollectibles(state) {
         // Random chance to spawn a cheese slice if there are few on screen
         if (state.cheeseSlices.length < 3 && Math.random() < 0.012) {
             state.cheeseSlices.push({
-                x: (Math.random() - 0.5) * 1000, // Tighter level 3 spread
-                y: 100, // Ground level height
-                z: 1200, // Starts far away at MAX_DEPTH
+                // NEW WAY: Centers cheese drops relative to where the player is driving
+                x: state.playerX + (Math.random() - 0.5) * 600,
+                y: 100,
+                z: 1200,
                 size: 35
             });
         }
@@ -187,6 +240,7 @@ export function updateCheeseCollectibles(state) {
 
             if (distanceX < collectionBuffer) {
                 state.cheeseProgress = Math.min(state.cheeseProgress + 0.15, 1.0);
+                playCollectSound('cheese');
                 state.cheeseSlices.splice(i, 1);
                 continue;
             }
@@ -197,6 +251,105 @@ export function updateCheeseCollectibles(state) {
         // OR check if it crossed well past your active player plane (e.g., playerZPlane - 50)
         if (cheese.z <= 10) {
             state.cheeseSlices.splice(i, 1); // Cleanly drop from array memory
+        }
+    }
+}
+// --- ADD THIS TO THE VERY BOTTOM OF physics.js ---
+
+export function updateVeggieCollectibles(state) {
+    let activeLevel = LEVELS[state.currentLevelIndex];
+
+    // Strictly gate the entire routine by the Topping level index (3)
+    if (state.currentLevelIndex !== 3) {
+        state.veggies = [];
+        return;
+    }
+
+    // Spawning engine routine (randomly chooses between pepper and onion)
+    if (state.veggies.length < 4 && Math.random() < 0.015) {
+        state.veggies.push({
+            // NEW WAY: Centers peppers and onions directly in the player's path
+            x: state.playerX + (Math.random() - 0.5) * 500,
+            y: 100,
+            z: 1200,
+            size: 32,
+            type: Math.random() < 0.5 ? 'pepper' : 'onion'
+        });
+    }
+
+    // Process movement tracking and player impact deletion
+    for (let i = state.veggies.length - 1; i >= 0; i--) {
+        let veg = state.veggies[i];
+        veg.z -= activeLevel.cubeSpeed;
+
+        // Collision Check using your dialed-in Z-plane variable value
+        let playerZPlane = 140;
+        if (veg.z >= playerZPlane - activeLevel.cubeSpeed && veg.z <= playerZPlane + 20) {
+            let distanceX = Math.abs(veg.x - state.playerX);
+            let collectionBuffer = (veg.size / 2) + state.playerRadius + 25;
+
+            if (distanceX < collectionBuffer) {
+                // SUCCESS: Add 10% to your topping bar and instantly disappear
+                state.toppingProgress = Math.min(state.toppingProgress + 0.10, 1.0);
+                playCollectSound('veg');
+                state.veggies.splice(i, 1);
+                continue;
+            }
+        }
+
+        // Leak-proof cleanup drop
+        if (veg.z <= 10) {
+            state.veggies.splice(i, 1);
+        }
+    }
+}
+
+// --- ADD THIS TO THE VERY BOTTOM OF physics.js ---
+
+export function updateMeatCollectibles(state) {
+    let activeLevel = LEVELS[state.currentLevelIndex];
+
+    // Strictly gate the entire routine by the Meat level index (4)
+    if (state.currentLevelIndex !== 4) {
+        state.meats = [];
+        return;
+    }
+
+    // Spawning engine routine (randomly chooses between pepperoni and sausage)
+    if (state.meats.length < 4 && Math.random() < 0.015) {
+        state.meats.push({
+            // NEW WAY: Centers pepperonis and sausages directly down your steering sightline
+            x: state.playerX + (Math.random() - 0.5) * 400,
+            y: 100,
+            z: 1200,
+            size: 32,
+            type: Math.random() < 0.5 ? 'pep' : 'sausage'
+        });
+    }
+
+    // Process movement tracking and player impact deletion
+    for (let i = state.meats.length - 1; i >= 0; i--) {
+        let meat = state.meats[i];
+        meat.z -= activeLevel.cubeSpeed;
+
+        // Collision Check using your dialed-in Z-plane variable value
+        let playerZPlane = 140;
+        if (meat.z >= playerZPlane - activeLevel.cubeSpeed && meat.z <= playerZPlane + 20) {
+            let distanceX = Math.abs(meat.x - state.playerX);
+            let collectionBuffer = (meat.size / 2) + state.playerRadius + 25;
+
+            if (distanceX < collectionBuffer) {
+                // SUCCESS: Add 10% to your meat bar and instantly disappear
+                state.meatProgress = Math.min(state.meatProgress + 0.10, 1.0);
+                playCollectSound('meat');
+                state.meats.splice(i, 1);
+                continue;
+            }
+        }
+
+        // Leak-proof cleanup drop
+        if (meat.z <= 10) {
+            state.meats.splice(i, 1);
         }
     }
 }
