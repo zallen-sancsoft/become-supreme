@@ -91,7 +91,6 @@ export function updateGame(state) {
         }
 
         if (state.currentLevelIndex !== oldLevelIndex) {
-            console.log('%$');
             playLevelBgm(state.currentLevelIndex);
         }
     } else {
