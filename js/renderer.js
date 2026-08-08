@@ -708,21 +708,27 @@ export function drawGame(ctx, canvas, state) {
 
         // 1. Draw Stylized Title Headline
         ctx.fillStyle = '#ffcc00'; // Warm pizza cheese gold
-        ctx.font = 'bold 44px sans-serif';
+        ctx.font = 'bold 36px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('PIZZA RUNNER 3D', canvas.width / 2, canvas.height / 2 - 80);
+        ctx.fillText('BECOME SUPREME', canvas.width / 2, canvas.height / 2 - 120);
 
         // Subtitle Instructions
         ctx.fillStyle = '#ffffff';
         ctx.font = '16px sans-serif';
-        ctx.fillText('Assemble the ultimate pizza across 5 culinary stages!', canvas.width / 2, canvas.height / 2 - 35);
-        ctx.fillText('Steer Left/Right to dodge obstacles and gather ingredients.', canvas.width / 2, canvas.height / 2 - 10);
+        ctx.fillText('Adventure to transform from a humble', canvas.width / 2, canvas.height / 2 - 35);
+        ctx.fillText('crust into a supreme pizza!', canvas.width / 2, canvas.height / 2 - 10);
+        ctx.fillText('Steer Left/Right to dodge obstacles', canvas.width / 2, canvas.height / 2 + 15);
+        ctx.fillText('and gather ingredients using', canvas.width / 2, canvas.height / 2 + 40);
+        ctx.fillText('left and righ arrow keys or tapping', canvas.width / 2, canvas.height / 2 + 65);
+        ctx.fillText('the right and left side of your screen', canvas.width / 2, canvas.height / 2 + 90);
+        /*ctx.fillText('Assemble the ultimate pizza across 5 culinary stages!', canvas.width / 2, canvas.height / 2 - 35);
+        ctx.fillText('Steer Left/Right to dodge obstacles and gather ingredients.', canvas.width / 2, canvas.height / 2 - 10);*/
 
         // 2. Draw Interactive Start Button Box
         let btnW = 220;
         let btnH = 50;
         let btnX = canvas.width / 2 - btnW / 2;
-        let btnY = canvas.height / 2 + 40;
+        let btnY = canvas.height / 2 + 160;
 
         ctx.fillStyle = '#ff3333'; // Vibrant marinara red button color
         ctx.beginPath();
@@ -737,7 +743,7 @@ export function drawGame(ctx, canvas, state) {
         // 3. Draw Button Call-To-Action Text
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 18px sans-serif';
-        ctx.fillText('START COOKING', canvas.width / 2, btnY + 31);
+        ctx.fillText('START', canvas.width / 2, btnY + 31);
     }
 
     if (state.isVictory) {

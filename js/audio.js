@@ -89,10 +89,13 @@ export function playHitSound(levelIndex) {
 }
 
 // --- SYSTEM 4: DYNAMIC CLOSE PROXIMITY BUZZER WARNINGS ---
-export function playProximitySound(levelIndex) {
+// removed, too slow
+/*export function playProximitySound(levelIndex) {
     const trackPath = proximitySounds[levelIndex];
     proxAudio = new Audio(trackPath);
     proxAudio.loop = false;
     proxAudio.volume = 0.1;
     proxAudio.play().catch(err => console.log("Audio play blocked:", err));
-}
+}*/
+
+

@@ -1,6 +1,6 @@
 import { NUM_CUBES, MAP_WIDTH, MAX_DEPTH, START_SAFE_ZONE, LEVELS, TILT_CONFIG } from './config.js';
 import { controls } from './input.js';
-import { playLevelBgm, stopBgm, playCollectSound, playHitSound, playProximitySound } from './audio.js';
+import { playLevelBgm, stopBgm, playCollectSound, playHitSound } from './audio.js';
 
 // Moves the array setup logic into the physics module
 export function initCubes(state) {
@@ -145,7 +145,7 @@ export function updateGame(state) {
             // If the obstacle is directly heading into your collision path
             if (distanceX < cube.size + 40) {
                 if (state.proxSoundCooldown === 0) {
-                    playProximitySound(state.currentLevelIndex);
+                    //playProximitySound(state.currentLevelIndex); removed, too slow
                     state.proxSoundCooldown = 15; // Beep every 15 frames while near danger
                 }
             }
