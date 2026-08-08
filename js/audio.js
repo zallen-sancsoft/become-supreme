@@ -14,100 +14,85 @@ function getAudioContext() {
     return audioCtx;
 }
 
-// --- SYSTEM 1: PLAY LEVEL-SPECIFIC BACKGROUND MUSIC SINE WAVES ---
-export function playLevelBgm(levelIndex) {
-    const ctx = getAudioContext();
-    stopBgm(); // Kill previous tracks cleanly
+// Array of MP3 paths for each level
+const levelTracks = [
+  './assets/audio/background/wind.mp3',
+  './assets/audio/background/farm.mp3',
+  './assets/audio/background/farm.mp3',
+  './assets/audio/background/sizzle.mp3',
+  './assets/audio/background/sizzle.mp3'
+];
 
-    activeBgmOsc = ctx.createOscillator();
-    activeBgmGain = ctx.createGain();
+const collectableSounds = []
+collectableSounds['tomato'] = './assets/audio/collectable/tomato.mp3';
+collectableSounds['cheese'] = './assets/audio/collectable/cheese.mp3';
+collectableSounds['veg'] = './assets/audio/collectable/veg.mp3';
+collectableSounds['meat'] = './assets/audio/collectable/meat.mp3';
 
-    // Map each stage to a unique looping drone frequency
-    // Stage 1: Warm low C | Stage 2: F minor drone | Stage 3: Deep space drone | Stage 4: Arid drone | Stage 5: Intense tension
-    const frequencies = [130.81, 174.61, 110.00, 146.83, 98.00];
-    let freq = frequencies[levelIndex] || 110.00;
+const collisionSounds = [
+    './assets/audio/collision/plant.mp3',
+    './assets/audio/collision/wood.mp3',
+    './assets/audio/collision/kick.mp3',
+    './assets/audio/collision/pan.mp3',
+    './assets/audio/collision/blade.mp3'
+];
 
-    // Use a mellow triangle wave for Baking/Saucing, and an intense sawtooth wave for cutting stages
-    activeBgmOsc.type = levelIndex >= 3 ? 'sawtooth' : 'triangle';
-    activeBgmOsc.frequency.setValueAtTime(freq, ctx.currentTime);
+const proximitySounds = [
+    './assets/audio/proximity/swoosh.mp3',
+    './assets/audio/proximity/swoosh.mp3',
+    './assets/audio/proximity/moo.mp3',
+    './assets/audio/proximity/swoosh.mp3',
+    './assets/audio/proximity/swoosh.mp3'
+];
 
-    // Keep music low in the mix so it doesn't hurt ears
-    activeBgmGain.gain.setValueAtTime(0.04, ctx.currentTime);
-
-    activeBgmOsc.connect(activeBgmGain);
-    activeBgmGain.connect(ctx.destination);
-    activeBgmOsc.start();
-}
+let activeBgmAudio = null;
+let collectAudio = null;
+let hitAudio = null;
+let proxAudio = null;
 
 export function stopBgm() {
-    if (activeBgmOsc) {
-        try { activeBgmOsc.stop(); } catch (e) { }
-        activeBgmOsc.disconnect();
-        activeBgmOsc = null;
+    if (activeBgmAudio) {
+        try {
+            activeBgmAudio.pause();
+            activeBgmAudio.currentTime = 0;
+        } catch (e) { }
+        activeBgmAudio = null;
+    }
+}
+
+export function playLevelBgm(levelIndex) {
+    if (levelIndex != 2 && levelIndex != 4) {
+        stopBgm(); // Stop previous track cleanly
+        const trackPath = levelTracks[levelIndex] || levelTracks[0];
+
+        activeBgmAudio = new Audio(trackPath);
+        activeBgmAudio.loop = true;
+        activeBgmAudio.volume = 0.1;
+        activeBgmAudio.play().catch(err => console.log("Audio play blocked:", err));
     }
 }
 
 // --- SYSTEM 2: COLLECTIBLE CORNER CHIMES (Tomatoes, Cheese, Veggies, Meats) ---
 export function playCollectSound(type) {
-    const ctx = getAudioContext();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'sine';
-
-    // Choose custom note profiles for food steps
-    let baseFreq = 440; // Default Tomato Pop A4
-    if (type === 'cheese') baseFreq = 587.33; // Cheese Ping D5
-    if (type === 'veg') baseFreq = 659.25;    // Vegetable Twang E5
-    if (type === 'meat') baseFreq = 783.99;   // Heavy Meat Chime G5
-
-    osc.frequency.setValueAtTime(baseFreq, ctx.currentTime);
-    // Arcade arpeggio frequency rise effect
-    osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, ctx.currentTime + 0.12);
-
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15); // Fast decay drop
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.15);
+    const trackPath = collectableSounds[type];
+    collectAudio = new Audio(trackPath);
+    collectAudio.loop = false;
+    collectAudio.play().catch(err => console.log("Audio play blocked:", err));
 }
 
 // --- SYSTEM 3: OBSTACLE HIT CRASH EFFECTS ---
 export function playHitSound(levelIndex) {
-    const ctx = getAudioContext();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    // Use harsh sawtooth/square waves to simulate a heavy impact crunch
-    osc.type = levelIndex === 4 ? 'square' : 'sawtooth';
-    osc.frequency.setValueAtTime(120, ctx.currentTime);
-    osc.frequency.linearRampToValueAtTime(30, ctx.currentTime + 0.4); // Downward drop
-
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.5);
+    const trackPath = collisionSounds[levelIndex];
+    hitAudio = new Audio(trackPath);
+    hitAudio.loop = false;
+    hitAudio.play().catch(err => console.log("Audio play blocked:", err));
 }
 
 // --- SYSTEM 4: DYNAMIC CLOSE PROXIMITY BUZZER WARNINGS ---
-export function playProximityTick() {
-    const ctx = getAudioContext();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(880, ctx.currentTime); // High pitch warning click
-
-    gain.gain.setValueAtTime(0.07, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.03); // Quick click sound
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.04);
+export function playProximitySound(levelIndex) {
+    const trackPath = proximitySounds[levelIndex];
+    proxAudio = new Audio(trackPath);
+    proxAudio.loop = false;
+    proxAudio.volume = 0.1;
+    proxAudio.play().catch(err => console.log("Audio play blocked:", err));
 }

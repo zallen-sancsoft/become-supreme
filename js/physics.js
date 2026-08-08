@@ -1,6 +1,6 @@
 import { NUM_CUBES, MAP_WIDTH, MAX_DEPTH, START_SAFE_ZONE, LEVELS, TILT_CONFIG } from './config.js';
 import { controls } from './input.js';
-import { playLevelBgm, stopBgm, playCollectSound, playHitSound, playProximityTick } from './audio.js';
+import { playLevelBgm, stopBgm, playCollectSound, playHitSound, playProximitySound } from './audio.js';
 
 // Moves the array setup logic into the physics module
 export function initCubes(state) {
@@ -56,6 +56,7 @@ export function updateGame(state) {
 
     if (state.currentLevelIndex < LEVELS.length - 1) {
         let nextLevel = LEVELS[state.currentLevelIndex + 1];
+        let oldLevelIndex = state.currentLevelIndex;
 
         if (state.currentLevelIndex === 1) {
             // Saucing -> Cheesing condition
@@ -87,6 +88,11 @@ export function updateGame(state) {
                 activeLevel = LEVELS[state.currentLevelIndex];
                 state.levelUpTimer = 60;
             }
+        }
+
+        if (state.currentLevelIndex !== oldLevelIndex) {
+            console.log('%$');
+            playLevelBgm(state.currentLevelIndex);
         }
     } else {
         if (state.meatProgress >= 1.0) {
@@ -140,7 +146,7 @@ export function updateGame(state) {
             // If the obstacle is directly heading into your collision path
             if (distanceX < cube.size + 40) {
                 if (state.proxSoundCooldown === 0) {
-                    playProximityTick();
+                    playProximitySound(state.currentLevelIndex);
                     state.proxSoundCooldown = 15; // Beep every 15 frames while near danger
                 }
             }

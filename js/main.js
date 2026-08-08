@@ -44,3 +44,35 @@ function loop() {
 // Boot up game engine
 initCubes(state);
 loop();
+
+
+/*async function loadAudioFile(audioContext, fileUrl) {
+    const response = await fetch(fileUrl);
+    const arrayBuffer = await response.arrayBuffer();
+    // Decode the audio data into an AudioBuffer
+    return await audioContext.decodeAudioData(arrayBuffer);
+}
+
+// 1. Initialize Context
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let cachedBuffer = null;
+
+// 2. Load and cache the file once
+async function init() {
+    cachedBuffer = await loadAudioFile(audioCtx, 'assets/audio/test.mp3');
+}
+
+// 3. Play the sound (call this on a user click event)
+function playSound() {
+    if (!cachedBuffer) return;
+
+    // Create the source node (replaces createOscillator)
+    const source = audioCtx.createBufferSource();
+
+    // Assign the loaded audio data
+    source.buffer = cachedBuffer;
+
+    // Connect to speakers and start
+    source.connect(audioCtx.destination);
+    source.start(0);
+}*/
