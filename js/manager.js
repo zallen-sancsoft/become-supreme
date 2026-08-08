@@ -24,19 +24,31 @@ export function resizeGame(canvas) {
 
 // --- STATE RESTORATION ENGINE ---
 export function resetGame(state) {
-    // Only permit a reset if the player is sitting on a Game Over state
     if (!state.isGameOver) return;
 
-    // Flush player active telemetry coordinates
+    // Clear out spatial positioning metrics
     state.playerX = 0;
     state.playerTilt = 0;
     state.score = 0;
+
+    // FIX: Explicitly drop the level tracking index completely back to 0 (Level 1)
     state.currentLevelIndex = 0;
+
     state.levelUpTimer = 0;
 
-    // Wake up physics cycle
+    // Flush out item lists and progress tracks completely
+    state.tomatoes = [];
+    state.sauceProgress = 0;
+
+    state.cheeseSlices = [];
+    state.cheeseProgress = 0;
+
+    state.isGameOver = false;
+    initCubes(state);
+
+    // Wake up physics engine cycle
     state.isGameOver = false;
 
-    // Re-initialize a safe starting obstacle layout
+    // Re-initialize starting field arrays
     initCubes(state);
 }
