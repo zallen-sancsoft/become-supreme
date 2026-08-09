@@ -94,7 +94,7 @@ export function handleMenuClick(e, canvas, state) {
     let btnW = 220;
     let btnH = 50;
     let btnX = canvas.width / 2 - btnW / 2;
-    let btnY = canvas.height / 2 + 40;
+    let btnY = canvas.height / 2 + 160;
 
     // Check if the coordinate position lands inside the start button rectangle box
     if (mouseX >= btnX && mouseX <= btnX + btnW && mouseY >= btnY && mouseY <= btnY + btnH) {
