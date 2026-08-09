@@ -701,7 +701,7 @@ export function drawGame(ctx, canvas, state) {
         ctx.fillText('Tap Screen or Space to Restart', canvas.width / 2, canvas.height / 2 + 30);
     }
 
-    if (state.isVictory) {
+    if (state.isMenuOpen) {
         // Semi-transparent clean dark backdrop overlay
         ctx.fillStyle = 'rgba(0, 0, 0, 0.82)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -747,7 +747,7 @@ export function drawGame(ctx, canvas, state) {
         ctx.fillText('START', canvas.width / 2, btnY + 31);
     }
 
-    if (state.isMenuOpen) {
+    if (state.isVictory) {
         // Semi-transparent deep emerald/gold victory overlay backing panel
         ctx.fillStyle = 'rgba(15, 32, 15, 0.88)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
