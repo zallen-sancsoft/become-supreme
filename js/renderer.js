@@ -701,7 +701,7 @@ export function drawGame(ctx, canvas, state) {
         ctx.fillText('Tap Screen or Space to Restart', canvas.width / 2, canvas.height / 2 + 30);
     }
 
-    if (state.isMenuOpen) {
+    if (state.isVictory) {
         // Semi-transparent clean dark backdrop overlay
         ctx.fillStyle = 'rgba(0, 0, 0, 0.82)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -747,7 +747,7 @@ export function drawGame(ctx, canvas, state) {
         ctx.fillText('START', canvas.width / 2, btnY + 31);
     }
 
-    if (state.isVictory) {
+    if (state.isMenuOpen) {
         // Semi-transparent deep emerald/gold victory overlay backing panel
         ctx.fillStyle = 'rgba(15, 32, 15, 0.88)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -756,19 +756,18 @@ export function drawGame(ctx, canvas, state) {
         ctx.fillStyle = '#ffcc00'; // Crown Gold
         ctx.font = 'bold 46px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('CHEF VICTORY!', canvas.width / 2, canvas.height / 2 - 90);
+        ctx.fillText('YOU HAVE', canvas.width / 2, canvas.height / 2 - 180);
+        ctx.fillText('BECOME', canvas.width / 2, canvas.height / 2 - 135);
+        ctx.fillText('SUPREME!', canvas.width / 2, canvas.height / 2 - 90);
 
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 20px sans-serif';
-        ctx.fillText('The Ultimate Pizza is Fully Assembled!', canvas.width / 2, canvas.height / 2 - 40);
 
         ctx.fillStyle = '#b3ffb3';
         ctx.font = '16px sans-serif';
-        ctx.fillText('Total Survival Score: ' + state.score, canvas.width / 2, canvas.height / 2 - 10);
+        ctx.fillText('Total Survival Score: ' + state.score, canvas.width / 2, canvas.height / 2 - 40);
 
         // Display current loop index context
         let loopLabel = state.ngPlusCount === 0 ? "First Complete Run" : "Completed NG+" + state.ngPlusCount;
-        ctx.fillText('Current Status: ' + loopLabel, canvas.width / 2, canvas.height / 2 + 15);
+        ctx.fillText('Current Status: ' + loopLabel, canvas.width / 2, canvas.height / 2);
 
         // 2. Render Interactive "START NEW GAME+" Button Boundary Box
         let vBtnW = 260;
@@ -793,7 +792,7 @@ export function drawGame(ctx, canvas, state) {
 
         ctx.fillStyle = '#aaaaaa';
         ctx.font = 'italic 13px sans-serif';
-        ctx.fillText('(WARNING: Speed increases, fields tighten!)', canvas.width / 2, vBtnY + 80);
+        ctx.fillText('(Speed increases, fields tighten!)', canvas.width / 2, vBtnY + 80);
     }
 }
 
